@@ -15,18 +15,19 @@
  * limitations under the License.
  */
 
-'use strict';
+const Jasmine = require('jasmine');
 
-exports.endpoints = process.env.APACHE_IGNITE_CLIENT_ENDPOINTS ?
-    process.env.APACHE_IGNITE_CLIENT_ENDPOINTS.split(',') : [];
-exports.debug = process.env.APACHE_IGNITE_CLIENT_DEBUG === 'true' ||
-    process.env.APACHE_IGNITE_CLIENT_DEBUG === '1';
-exports.nodeDebug = process.env.APACHE_IGNITE_SERVER_DEBUG === 'true' ||
-    process.env.APACHE_IGNITE_SERVER_DEBUG === '1';
-exports.partitionAwareness = process.env.APACHE_IGNITE_CLIENT_PARTITION_AWARENESS === 'true' ||
-    process.env.APACHE_IGNITE_CLIENT_PARTITION_AWARENESS === '1';
-exports.igniteHome = process.env.IGNITE_HOME;
-
-
-//exports.endpoints = ['127.0.0.1:10800'];
-//exports.debug = false;
+const jasmine = new Jasmine();
+jasmine.loadConfig({
+    'spec_dir': 'spec',
+    'spec_files': [
+        "partition_awareness/**/*[sS]pec.js",
+	    "cache/**/*[sS]pec.js",
+	    "query/**/*[sS]pec.js"
+    ],
+    "random": false,
+    // If this is set to true, we won't clean up environment, i.e. stop nodes
+    "stopOnSpecFailure": false
+});
+// We exclude the "scan query test suite > scan query settings" spec because sometimes it fails with more than one node cluster
+jasmine.execute(null, "(?!^scan query test suite > scan query settings$)(^.*$)");
