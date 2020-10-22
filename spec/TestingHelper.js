@@ -26,15 +26,8 @@ const path = require('path');
 const fs = require('fs');
 const child_process = require('child_process');
 const config = require('./config');
-const IgniteClient = require('apache-ignite-client');
 const LogReader = require('./LogReader');
-const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
-const Errors = IgniteClient.Errors;
-const EnumItem = IgniteClient.EnumItem;
-const Timestamp = IgniteClient.Timestamp;
-const Decimal = IgniteClient.Decimal;
-const BinaryObject = IgniteClient.BinaryObject;
-const ObjectType = IgniteClient.ObjectType;
+const {IgniteClient, IgniteClientConfiguration, Errors, EnumItem, Timestamp, Decimal, BinaryObject, ObjectType} = require('apache-ignite-client');
 
 const TIMEOUT_MS = 60000;
 
@@ -262,7 +255,8 @@ class TestingHelper {
 
     static getNodeRunner() {
         if (!config.igniteHome)
-            throw 'Can not start node: IGNITE_HOME is not set';
+            throw 'Can not start node: ' +
+            'IGNITE_HOME is not set';
 
         const ext = TestingHelper.isWindows() ? '.bat' : '.sh';
         const runner = path.join(config.igniteHome, 'bin', 'ignite' + ext);
@@ -529,7 +523,7 @@ class TestingHelper {
             throw 'Failed to start Node: timeout while trying to connect';
         }
 
-        return srv
+        return srv;
     }
 
     static executeExample(name, outputChecker) {

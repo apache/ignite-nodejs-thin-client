@@ -29,5 +29,4 @@ jasmine.loadConfig({
     // If this is set to true, we won't clean up environment, i.e. stop nodes
     "stopOnSpecFailure": false
 });
-// We exclude the "scan query test suite > scan query settings" spec because sometimes it fails with more than one node cluster
-jasmine.execute(null, "(?!^scan query test suite > scan query settings$)(^.*$)");
+jasmine.execute();

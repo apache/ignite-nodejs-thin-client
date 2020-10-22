@@ -17,16 +17,28 @@
 
 'use strict';
 
-exports.endpoints = process.env.APACHE_IGNITE_CLIENT_ENDPOINTS ?
-                    process.env.APACHE_IGNITE_CLIENT_ENDPOINTS.split(',') : [];
-exports.debug = process.env.APACHE_IGNITE_CLIENT_DEBUG === 'true' ||
-                process.env.APACHE_IGNITE_CLIENT_DEBUG === '1';
-exports.nodeDebug = process.env.APACHE_IGNITE_SERVER_DEBUG === 'true' ||
-    process.env.APACHE_IGNITE_SERVER_DEBUG === '1';
-exports.partitionAwareness = process.env.APACHE_IGNITE_CLIENT_PARTITION_AWARENESS === 'true' ||
-    process.env.APACHE_IGNITE_CLIENT_PARTITION_AWARENESS === '1';
-exports.igniteHome = process.env.IGNITE_HOME;
+/** Utility class for logging errors and debug messages. */
+export default class Logger {
 
+    private static _debug: boolean = false;
 
-//exports.endpoints = ['127.0.0.1:10800'];
-//exports.debug = false;
+    static get debug(): boolean {
+        return Logger._debug;
+    }
+
+    static set debug(value: boolean) {
+        Logger._debug = value;
+    }
+
+    static logDebug(data: string, ...args: any[]) {
+        if (Logger._debug) {
+            console.log(data, ...args);
+        }
+    }
+
+    static logError(data: string, ...args: any[]) {
+        if (Logger._debug) {
+            console.log('ERROR: ' + data, ...args);
+        }
+    }
+}

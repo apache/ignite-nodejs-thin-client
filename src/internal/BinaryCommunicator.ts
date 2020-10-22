@@ -17,23 +17,31 @@
 
 'use strict';
 
-const Decimal = require('decimal.js');
-const CollectionObjectType = require('../ObjectType').CollectionObjectType;
-const ComplexObjectType = require('../ObjectType').ComplexObjectType;
-const Errors = require('../Errors');
-const Timestamp = require('../Timestamp');
-const EnumItem = require('../EnumItem');
-const BinaryUtils = require('./BinaryUtils');
-const BinaryTypeStorage = require('./BinaryTypeStorage');
+import {CollectionObjectType, ComplexObjectType} from "../ObjectType";
+import {Timestamp} from "../Timestamp";
+import {EnumItem} from "../EnumItem";
+import BinaryUtils from "./BinaryUtils";
+import BinaryTypeStorage from "./BinaryTypeStorage";
+import { IgniteClientError } from "../Errors";
+import {BinaryObject} from "../BinaryObject";
+import BinaryType from "./BinaryType";
+import Router from './Router';
+import MessageBuffer from "./MessageBuffer";
+import { AffinityHint } from "../CacheClient";
+const Decimal = require('decimal.js').default;
 
-class BinaryCommunicator {
+export default class BinaryCommunicator {
 
-    constructor(router) {
+    private _router: Router;
+
+    private _typeStorage: BinaryTypeStorage;
+
+    constructor(router: Router) {
         this._router = router;
         this._typeStorage = new BinaryTypeStorage(this);
     }
 
-    static readString(buffer) {
+    static readString(buffer: MessageBuffer): string | null {
         const typeCode = buffer.readByte();
         BinaryUtils.checkTypesComatibility(BinaryUtils.TYPE_CODE.STRING, typeCode);
         if (typeCode === BinaryUtils.TYPE_CODE.NULL) {
@@ -42,7 +50,7 @@ class BinaryCommunicator {
         return buffer.readString();
     }
 
-    static writeString(buffer, value) {
+    static writeString(buffer: MessageBuffer, value: string) {
         if (value === null) {
             buffer.writeByte(BinaryUtils.TYPE_CODE.NULL);
         }
@@ -52,7 +60,7 @@ class BinaryCommunicator {
         }
     }
 
-    async send(opCode, payloadWriter, payloadReader = null, affinityHint = null) {
+    async send(opCode, payloadWriter, payloadReader = null, affinityHint: AffinityHint = null) {
         await this._router.send(opCode, payloadWriter, payloadReader, affinityHint);
     }
 
@@ -152,7 +160,7 @@ class BinaryCommunicator {
                 await this._writeComplexObject(buffer, object, objectType);
                 break;
             default:
-                throw Errors.IgniteClientError.unsupportedTypeError(objectType);
+                throw IgniteClientError.unsupportedTypeError(objectType);
         }
     }
 
@@ -213,7 +221,7 @@ class BinaryCommunicator {
             case BinaryUtils.TYPE_CODE.COMPLEX_OBJECT:
                 return await this._readComplexObject(buffer, expectedType);
             default:
-                throw Errors.IgniteClientError.unsupportedTypeError(objectTypeCode);
+                throw IgniteClientError.unsupportedTypeError(objectTypeCode);
         }
     }
 
@@ -279,12 +287,12 @@ class BinaryCommunicator {
         const size = buffer.readInteger();
         const subType = buffer.readByte();
         const isSet = CollectionObjectType._isSet(subType);
-        const result = isSet ? new Set() : new Array(size);
+        const result: Set<any> | Array<any> = isSet ? new Set() : new Array(size);
         let element;
         for (let i = 0; i < size; i++) {
             element = await this.readObject(buffer, expectedColType ? expectedColType._elementType : null);
             if (isSet) {
-                result.add(element);
+                (result as Set<any>).add(element);
             }
             else {
                 result[i] = element;
@@ -307,7 +315,6 @@ class BinaryCommunicator {
 
     async _readComplexObject(buffer, expectedType) {
         buffer.position = buffer.position - 1;
-        const BinaryObject = require('../BinaryObject');
         const binaryObject = await BinaryObject._fromBuffer(this, buffer);
         return expectedType ?
             await binaryObject.toObject(expectedType) : binaryObject;
@@ -365,12 +372,11 @@ class BinaryCommunicator {
     }
 
     async _writeArray(buffer, array, arrayType, arrayTypeCode) {
-        const BinaryType = require('./BinaryType');
         const elementType = BinaryUtils.getArrayElementType(arrayType);
         const keepElementType = BinaryUtils.keepArrayElementType(arrayTypeCode);
         if (arrayTypeCode === BinaryUtils.TYPE_CODE.OBJECT_ARRAY) {
             buffer.writeInteger(elementType instanceof ComplexObjectType ?
-                BinaryType._calculateId(elementType._typeName) : -1);
+                BinaryType._calculateId((elementType as ComplexObjectType).typeName) : -1);
         }
         buffer.writeInteger(array.length);
         for (let elem of array) {
@@ -401,9 +407,6 @@ class BinaryCommunicator {
     }
 
     async _writeComplexObject(buffer, object, objectType) {
-        const BinaryObject = require('../BinaryObject');
         await this._writeBinaryObject(buffer, await BinaryObject.fromObject(object, objectType));
     }
 }
-
-module.exports = BinaryCommunicator;

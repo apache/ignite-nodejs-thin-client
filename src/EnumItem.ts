@@ -17,9 +17,11 @@
 
 'use strict';
 
-const Util = require('util');
-const ArgumentChecker = require('./internal/ArgumentChecker');
-const Errors = require('./Errors');
+import * as Util from "util";
+import ArgumentChecker from "./internal/ArgumentChecker";
+import { IgniteClientError } from "./Errors";
+import BinaryCommunicator from "./internal/BinaryCommunicator";
+import MessageBuffer from "./internal/MessageBuffer";
 
 /**
  * Class representing an item of Ignite enum type.
@@ -35,7 +37,15 @@ const Errors = require('./Errors');
  * To distinguish one item from another, the Ignite client analyzes the optional fields in the following order:
  * ordinal, name, value.
  */
-class EnumItem {
+export class EnumItem {
+
+    private _typeId: number;
+
+    private _ordinal: number;
+
+    private _name: string;
+
+    private _value: number;
 
     /**
      * Public constructor.
@@ -46,7 +56,7 @@ class EnumItem {
      *
      * @throws {IgniteClientError} if error.
      */
-    constructor(typeId) {
+    constructor(typeId: number) {
         this.setTypeId(typeId);
         this._ordinal = null;
         this._name = null;
@@ -58,7 +68,7 @@ class EnumItem {
      *
      * @return {number} - Id of the enum type.
      */
-    getTypeId() {
+    getTypeId(): number {
         return this._typeId;
     }
 
@@ -71,7 +81,7 @@ class EnumItem {
      *
      * @throws {IgniteClientError} if error.
      */
-    setTypeId(typeId) {
+    setTypeId(typeId: number): EnumItem {
         ArgumentChecker.isInteger(typeId, 'typeId');
         this._typeId = typeId;
         return this;
@@ -83,7 +93,7 @@ class EnumItem {
      *
      * @return {number} - ordinal of the item in the Ignite enum type.
      */
-    getOrdinal() {
+    getOrdinal(): number {
         return this._ordinal;
     }
 
@@ -96,7 +106,7 @@ class EnumItem {
      *
      * @throws {IgniteClientError} if error.
      */
-    setOrdinal(ordinal) {
+    setOrdinal(ordinal: number): EnumItem {
         ArgumentChecker.isInteger(ordinal, 'ordinal');
         this._ordinal = ordinal;
         return this;
@@ -108,7 +118,7 @@ class EnumItem {
      *
      * @return {string} - name of the item.
      */
-    getName() {
+    getName(): string {
         return this._name;
     }
 
@@ -121,7 +131,7 @@ class EnumItem {
      *
      * @throws {IgniteClientError} if error.
      */
-    setName(name) {
+    setName(name: string): EnumItem {
         ArgumentChecker.notEmpty(name, 'name');
         this._name = name;
         return this;
@@ -133,7 +143,7 @@ class EnumItem {
      *
      * @return {number} - value of the item.
      */
-    getValue() {
+    getValue(): number {
         return this._value;
     }
 
@@ -146,7 +156,7 @@ class EnumItem {
      *
      * @throws {IgniteClientError} if error.
      */
-    setValue(value) {
+    setValue(value: number): EnumItem {
         ArgumentChecker.isInteger(value, 'value');
         this._value = value;
         return this;
@@ -157,10 +167,10 @@ class EnumItem {
     /**
      * @ignore
      */
-    async _write(communicator, buffer) {
+    async _write(communicator: BinaryCommunicator, buffer: MessageBuffer) {
         const type = await this._getType(communicator, this._typeId);
-        if (!type || !type._isEnum) {
-            throw Errors.IgniteClientError.enumSerializationError(
+        if (!type || !type.isEnum) {
+            throw IgniteClientError.enumSerializationError(
                 true, Util.format('enum type id "%d" is not registered', this._typeId));
         }
         buffer.writeInteger(this._typeId);
@@ -169,44 +179,42 @@ class EnumItem {
             return;
         }
         else if (this._name !== null || this._value !== null) {
-            if (type._enumValues) {
-                for (let i = 0; i < type._enumValues.length; i++) {
-                    if (this._name === type._enumValues[i][0] ||
-                        this._value === type._enumValues[i][1]) {
+            if (type.enumValues) {
+                for (let i = 0; i < type.enumValues.length; i++) {
+                    if (this._name === type.enumValues[i][0] ||
+                        this._value === type.enumValues[i][1]) {
                         buffer.writeInteger(i);
                         return;
                     }
                 }
             }
         }
-        throw Errors.IgniteClientError.illegalArgumentError(
+        throw IgniteClientError.illegalArgumentError(
             'Proper ordinal, name or value must be specified for EnumItem');
     }
 
     /**
      * @ignore
      */
-    async _read(communicator, buffer) {
+    async _read(communicator: BinaryCommunicator, buffer: MessageBuffer) {
         this._typeId = buffer.readInteger();
         this._ordinal = buffer.readInteger();
         const type = await this._getType(communicator, this._typeId);
-        if (!type || !type._isEnum) {
-            throw Errors.IgniteClientError.enumSerializationError(
+        if (!type || !type.isEnum) {
+            throw IgniteClientError.enumSerializationError(
                 false, Util.format('enum type id "%d" is not registered', this._typeId));
         }
-        else if (!type._enumValues || type._enumValues.length <= this._ordinal) {
-            throw Errors.IgniteClientError.enumSerializationError(false, 'type mismatch');
+        else if (!type.enumValues || type.enumValues.length <= this._ordinal) {
+            throw IgniteClientError.enumSerializationError(false, 'type mismatch');
         }
-        this._name = type._enumValues[this._ordinal][0];
-        this._value = type._enumValues[this._ordinal][1];
+        this._name = type.enumValues[this._ordinal][0];
+        this._value = type.enumValues[this._ordinal][1];
     }
 
     /**
      * @ignore
      */
-    async _getType(communicator, typeId) {
+    async _getType(communicator: BinaryCommunicator, typeId: number) {
         return await communicator.typeStorage.getType(typeId);
     }
 }
-
-module.exports = EnumItem;

@@ -17,7 +17,7 @@
 
 'use strict';
 
-const ArgumentChecker = require('./internal/ArgumentChecker');
+import ArgumentChecker from "./internal/ArgumentChecker";
 
 /**
  * Class representing an Ignite timestamp type.
@@ -29,7 +29,9 @@ const ArgumentChecker = require('./internal/ArgumentChecker');
  *     this class specifies additional methods to operate with the nanoseconds.
  * @extends Date
  */
-class Timestamp extends Date {
+export class Timestamp extends Date {
+
+    private _nanos: number;
 
     /**
      * Public constructor.
@@ -52,7 +54,7 @@ class Timestamp extends Date {
      *
      * @return {number} - nanoseconds of the last millisecond.
      */
-    getNanos() {
+    getNanos(): number {
         return this._nanos;
     }
 
@@ -66,11 +68,9 @@ class Timestamp extends Date {
      *
      * @throws {IgniteClientError} if error.
      */
-    setNanos(nanos) {
+    setNanos(nanos: number): Timestamp {
         ArgumentChecker.isInteger(nanos, 'nanos');
         this._nanos = nanos;
         return this;
     }
 }
-
-module.exports = Timestamp;

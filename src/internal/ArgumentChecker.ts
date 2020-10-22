@@ -17,20 +17,20 @@
 
 'use strict';
 
-const Util = require('util');
-const Errors = require('../Errors');
+import * as Util from 'util';
+import {IgniteClientError} from "../Errors";
 
 /** Helper class for the library methods arguments check. */
-class ArgumentChecker {
+export default class ArgumentChecker {
     static notEmpty(arg, argName) {
         if (!arg || arg instanceof Array && arg.length === 0) {
-            throw Errors.IgniteClientError.illegalArgumentError(Util.format('"%s" argument should not be empty', argName));
+            throw IgniteClientError.illegalArgumentError(Util.format('"%s" argument should not be empty', argName));
         }
     }
 
     static notNull(arg, argName) {
         if (arg === null || arg === undefined) {
-            throw Errors.IgniteClientError.illegalArgumentError(Util.format('"%s" argument should not be null', argName));
+            throw IgniteClientError.illegalArgumentError(Util.format('"%s" argument should not be null', argName));
         }
     }
 
@@ -49,7 +49,7 @@ class ArgumentChecker {
                     return;
                 }
             }
-            throw Errors.IgniteClientError.illegalArgumentError(Util.format('"%s" argument has incorrect type', argName));
+            throw IgniteClientError.illegalArgumentError(Util.format('"%s" argument has incorrect type', argName));
         }
     }
 
@@ -61,23 +61,21 @@ class ArgumentChecker {
         }
         else {
             if (!Object.values(values).includes(arg)) {
-                throw Errors.IgniteClientError.illegalArgumentError(Util.format('"%s" argument has incorrect value', argName));
+                throw IgniteClientError.illegalArgumentError(Util.format('"%s" argument has incorrect value', argName));
             }
         }
     }
 
     static isInteger(arg, argName) {
         if (arg === null || arg === undefined || !Number.isInteger(arg)) {
-            throw Errors.IgniteClientError.illegalArgumentError(Util.format('"%s" argument should be integer', argName));
+            throw IgniteClientError.illegalArgumentError(Util.format('"%s" argument should be integer', argName));
         }
     }
 
     static invalidArgument(arg, argName, type) {
         if (arg !== null && arg !== undefined) {
-            throw Errors.IgniteClientError.illegalArgumentError(
+            throw IgniteClientError.illegalArgumentError(
                 Util.format('"%s" argument is invalid for %s', argName, type.constructor.name));
         }
     }
 }
-
-module.exports = ArgumentChecker;

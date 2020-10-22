@@ -16,12 +16,7 @@
  */
 
 const Util = require('util');
-const IgniteClient = require('apache-ignite-client');
-const ObjectType = IgniteClient.ObjectType;
-const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
-const CacheConfiguration = IgniteClient.CacheConfiguration;
-const SqlFieldsQuery = IgniteClient.SqlFieldsQuery;
-const SqlQuery = IgniteClient.SqlQuery;
+const {IgniteClient, ObjectType, CacheConfiguration, SqlFieldsQuery, SqlQuery, IgniteClientConfiguration} = require('apache-ignite-client');
 
 const ENDPOINT = '127.0.0.1:10800';
 

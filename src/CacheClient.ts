@@ -17,11 +17,13 @@
 
 'use strict';
 
-const BinaryUtils = require('./internal/BinaryUtils');
-const ArgumentChecker = require('./internal/ArgumentChecker');
-const SqlQuery = require('./Query').SqlQuery;
-const SqlFieldsQuery = require('./Query').SqlFieldsQuery;
-const ScanQuery = require('./Query').ScanQuery;
+import BinaryUtils from "./internal/BinaryUtils";
+import ArgumentChecker from "./internal/ArgumentChecker";
+import {ScanQuery, SqlFieldsQuery, SqlQuery} from "./Query";
+import BinaryCommunicator from "./internal/BinaryCommunicator";
+import {PRIMITIVE_TYPE} from "./internal/Constants";
+import { CompositeType } from "./ObjectType";
+import {CacheConfiguration} from "./CacheConfiguration";
 
 /**
  * Peek modes
@@ -55,7 +57,13 @@ const PEEK_MODE = Object.freeze({
  *
  * @hideconstructor
  */
-class CacheClient {
+export class CacheClient {
+    private _communicator: BinaryCommunicator;
+    private _cacheId: number;
+    private _keyType: PRIMITIVE_TYPE | CompositeType;
+    private _valueType: PRIMITIVE_TYPE | CompositeType;
+    private _name: string;
+    private _config: CacheConfiguration;
 
     static get PEEK_MODE() {
         return PEEK_MODE;
@@ -77,7 +85,7 @@ class CacheClient {
      * will do automatic mapping between some of the JavaScript types and object types -
      * according to the mapping table defined in the description of the {@link ObjectType} class.
      *
-     * @param {ObjectType.PRIMITIVE_TYPE | CompositeType} type - type of the keys in the cache:
+     * @param {PRIMITIVE_TYPE | CompositeType} type - type of the keys in the cache:
      *   - either a type code of primitive (simple) type
      *   - or an instance of class representing non-primitive (composite) type
      *   - or null (means the type is not specified).
@@ -86,7 +94,7 @@ class CacheClient {
      *
      * @throws {IgniteClientError} if error.
      */
-    setKeyType(type) {
+    setKeyType(type: PRIMITIVE_TYPE | CompositeType) {
         BinaryUtils.checkObjectType(type, 'type');
         this._keyType = type;
         return this;
@@ -106,7 +114,7 @@ class CacheClient {
      * will do automatic mapping between some of the JavaScript types and object types -
      * according to the mapping table defined in the description of the {@link ObjectType} class.
      *
-     * @param {ObjectType.PRIMITIVE_TYPE | CompositeType} type - type of the values in the cache:
+     * @param {PRIMITIVE_TYPE | CompositeType} type - type of the values in the cache:
      *   - either a type code of primitive (simple) type
      *   - or an instance of class representing non-primitive (composite) type
      *   - or null (means the type is not specified).
@@ -115,7 +123,7 @@ class CacheClient {
      *
      * @throws {IgniteClientError} if error.
      */
-    setValueType(type) {
+    setValueType(type: PRIMITIVE_TYPE | CompositeType) {
         BinaryUtils.checkObjectType(type, 'type');
         this._valueType = type;
         return this;
@@ -553,7 +561,7 @@ class CacheClient {
     /**
      * @ignore
      */
-    constructor(name, config, communicator) {
+    constructor(name: string, config: CacheConfiguration, communicator: BinaryCommunicator) {
         this._name = name;
         this._cacheId = CacheClient._calculateId(this._name);
         this._config = config;
@@ -745,19 +753,19 @@ class CacheClient {
     /**
      * @ignore
      */
-    _createAffinityHint(key) {
-        const affinityHint = {};
-        affinityHint.cacheId = this._cacheId;
-        affinityHint.key = key;
-        affinityHint.keyType = this._keyType;
-        return affinityHint;
+    _createAffinityHint(key: object): AffinityHint {
+        return new AffinityHint(this._cacheId, key, this._keyType);
     }
 }
 
 /**
  * A cache entry (key-value pair).
  */
-class CacheEntry {
+export class CacheEntry {
+
+    private _key: object;
+
+    private _value: object;
 
     /**
      * Public constructor.
@@ -767,7 +775,7 @@ class CacheEntry {
      *
      * @return {CacheEntry} - new CacheEntry instance
      */
-    constructor(key, value) {
+    constructor(key: object, value: object) {
         this._key = key;
         this._value = value;
     }
@@ -791,5 +799,15 @@ class CacheEntry {
     }
 }
 
-module.exports = CacheClient;
-module.exports.CacheEntry = CacheEntry;
+export class AffinityHint {
+
+    readonly cacheId: number;
+    readonly key: object;
+    readonly keyType: PRIMITIVE_TYPE | CompositeType;
+
+    constructor(cacheId: number, key: object, keyType: PRIMITIVE_TYPE | CompositeType) {
+        this.cacheId = cacheId;
+        this.key = key;
+        this.keyType = keyType;
+    }
+}

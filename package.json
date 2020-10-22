@@ -2,11 +2,11 @@
   "name": "apache-ignite-client",
   "version": "1.1.0",
   "description": "NodeJS Client for Apache Ignite",
-  "main": "index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
-    "/examples",
-    "/lib",
-    "index.js"
+    "dist",
+    "examples"
   ],
   "repository": {
     "type": "git",
@@ -23,22 +23,27 @@
     "node": ">=8.0.0"
   },
   "dependencies": {
-    "long": "latest",
-    "decimal.js": "latest"
+    "decimal.js": "10.2.1",
+    "long": "4.0.0"
   },
   "scripts": {
     "test": "jasmine",
     "test:examples": "node ./spec/ExamplesExecutor.js Examples",
     "test:auth_example": "node ./spec/ExamplesExecutor.js AuthExample",
-    "test:affinity_awareness": "APACHE_IGNITE_CLIENT_AFFINITY_AWARENESS=true node ./spec/PartitionAwarenessExecutor.js",
-    "test:partition_awareness": "APACHE_IGNITE_CLIENT_AFFINITY_AWARENESS=true node ./spec/PartitionAwarenessExecutor.js"
+    "test:partition_awareness": "APACHE_IGNITE_CLIENT_PARTITION_AWARENESS=true node ./spec/PartitionAwarenessExecutor.js",
+    "build": "tsc"
   },
   "devDependencies": {
-    "jasmine": "3.6.1",
-    "jasmine-expect": "4.0.0",
-    "jasmine-reporters": "2.1.1",
-    "ps-tree": "latest",
-    "process-exists": "latest",
-    "glob": "7.1.6"
+    "jasmine": "3.6.2",
+    "jasmine-expect": "5.0.0",
+    "jasmine-reporters": "2.3.2",
+    "ps-tree": "1.2.0",
+    "process-exists": "4.0.0",
+    "glob": "7.1.6",
+    "@types/node": "14.14.2",
+    "@types/long": "4.0.1",
+    "typescript": "4.0.3",
+    "source-map-support": "^0.5.19",
+    "ts-node": "9.0.0"
   }
 }

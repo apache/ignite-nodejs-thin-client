@@ -17,26 +17,38 @@
 
 'use strict';
 
-const Util = require('util');
-const Long = require('long');
-const ComplexObjectType = require('../ObjectType').ComplexObjectType;
-const BinaryTypeStorage = require('./BinaryTypeStorage');
-const BinaryUtils = require('./BinaryUtils');
-const BinaryCommunicator = require('./BinaryCommunicator');
-const Errors = require('../Errors');
+import * as Util from "util";
+import * as Long from "long";
+import {ComplexObjectType} from "../ObjectType";
+import BinaryTypeStorage from "./BinaryTypeStorage";
+import BinaryUtils from "./BinaryUtils";
+import BinaryCommunicator from "./BinaryCommunicator";
+import {IgniteClientError} from "../Errors";
 
-class BinaryType {
-    constructor(name) {
+export default class BinaryType {
+
+    private _id: number;
+    private _fields: Map<number, BinaryField>;
+    private _schemas: Map<number, BinarySchema>;
+    private _name: string;
+    private _isEnum: boolean;
+    private _enumValues: [string, number][];
+
+    constructor(name: string) {
         this._name = name;
         this._id = BinaryType._calculateId(name);
-        this._fields = new Map();
-        this._schemas = new Map();
+        this._fields = new Map<number, BinaryField>();
+        this._schemas = new Map<number, BinarySchema>();
         this._isEnum = false;
         this._enumValues = null;
     }
 
     get id() {
         return this._id;
+    }
+
+    set id(val: number) {
+        this._id = val;
     }
 
     get name() {
@@ -55,25 +67,25 @@ class BinaryType {
         return this._fields.has(fieldId);
     }
 
-    removeField(fieldId) {
+    removeField(fieldId: number) {
         return this._fields.delete(fieldId);
     }
 
-    setField(field) {
+    setField(field: BinaryField) {
         this._fields.set(field.id, field);
     }
 
-    hasSchema(schemaId) {
+    hasSchema(schemaId: number) {
         return this._schemas.has(schemaId);
     }
 
-    addSchema(schema) {
+    addSchema(schema: BinarySchema) {
         if (!this.hasSchema(schema.id)) {
             this._schemas.set(schema.id, schema);
         }
     }
 
-    getSchema(schemaId) {
+    getSchema(schemaId: number) {
         return this._schemas.get(schemaId);
     }
 
@@ -83,9 +95,8 @@ class BinaryType {
             fieldId = field.id;
             if (this.hasField(fieldId)) {
                 if (this.getField(fieldId).typeCode !== field.typeCode) {
-                    throw Errors.IgniteClientError.serializationError(
-                        true, Util.format('type conflict for field "%s" of complex object type "%s"'),
-                        field.name, this._name);
+                    throw IgniteClientError.serializationError(
+                        true, Util.format('type conflict for field "%s" of complex object type "%s"', field.name, this._name));
                 }
             }
             else {
@@ -96,8 +107,7 @@ class BinaryType {
     }
 
     clone() {
-        const result = new BinaryType();
-        result._name = this._name;
+        const result = new BinaryType(this._name);
         result._id = this._id;
         result._fields = new Map(this._fields.entries());
         result._schemas = new Map(this._schemas.entries());
@@ -114,7 +124,15 @@ class BinaryType {
         return this._name !== null;
     }
 
-    static _calculateId(name) {
+    get enumValues(): [string, number][] {
+        return this._enumValues;
+    }
+
+    get isEnum(): boolean {
+        return this._isEnum;
+    }
+
+    static _calculateId(name): number {
         return BinaryUtils.strHashCodeLowerCase(name);
     }
 
@@ -185,7 +203,7 @@ class BinaryType {
         this._isEnum = buffer.readBoolean();
         if (this._isEnum) {
             const valuesCount = buffer.readInteger();
-            this._enumValues = new Array(valuesCount);
+            this._enumValues = new Array<[string, number]>(valuesCount);
             for (let i = 0; i < valuesCount; i++) {
                 this._enumValues[i] = [BinaryCommunicator.readString(buffer), buffer.readInteger()];
             }
@@ -198,10 +216,13 @@ const FNV1_OFFSET_BASIS = 0x811C9DC5;
 /** FNV1 hash prime. */
 const FNV1_PRIME = 0x01000193;
 
-class BinarySchema {
+export class BinarySchema {
+    private _id: number;
+    private _fieldIds: Set<number>;
+    private _isValid: boolean;
     constructor() {
         this._id = BinarySchema._schemaInitialId();
-        this._fieldIds = new Set();
+        this._fieldIds = new Set<number>();
         this._isValid = true;
     }
 
@@ -250,7 +271,7 @@ class BinarySchema {
         return this._fieldIds.has(fieldId);
     }
 
-    static _schemaInitialId() {
+    static _schemaInitialId(): number {
         return FNV1_OFFSET_BASIS | 0;
     }
 
@@ -292,8 +313,11 @@ class BinarySchema {
     }
 }
 
-class BinaryField {
-    constructor(name, typeCode) {
+export class BinaryField {
+    private _name: string;
+    private _id: number;
+    private _typeCode: number;
+    constructor(name: string, typeCode: number) {
         this._name = name;
         this._id = BinaryField._calculateId(name);
         this._typeCode = typeCode;
@@ -338,7 +362,10 @@ class BinaryField {
     }
 }
 
-class BinaryTypeBuilder {
+export class BinaryTypeBuilder {
+    private _schema: BinarySchema;
+    private _type: BinaryType;
+    private _fromStorage: boolean;
 
     static fromTypeName(typeName) {
         let result = new BinaryTypeBuilder();
@@ -346,7 +373,7 @@ class BinaryTypeBuilder {
         return result;
     }
 
-    static async fromTypeId(communicator, typeId, schemaId) {
+    static async fromTypeId(communicator: BinaryCommunicator, typeId: number, schemaId: number) {
         let result = new BinaryTypeBuilder();
         let type = await communicator.typeStorage.getType(typeId, schemaId);
         if (type) {
@@ -354,7 +381,7 @@ class BinaryTypeBuilder {
             if (schemaId !== null) {
                 result._schema = type.getSchema(schemaId);
                 if (!result._schema) {
-                    throw Errors.IgniteClientError.serializationError(
+                    throw IgniteClientError.serializationError(
                         false, Util.format('schema id "%d" specified for complex object of type "%s" not found',
                             schemaId, type.name));
                 }
@@ -366,7 +393,7 @@ class BinaryTypeBuilder {
             return result;
         }
         result._init(null);
-        result._type._id = typeId;
+        result._type.id = typeId;
         return result;
     }
 
@@ -381,7 +408,7 @@ class BinaryTypeBuilder {
         }
     }
 
-    static fromComplexObjectType(complexObjectType, jsObject) {
+    static fromComplexObjectType(complexObjectType: ComplexObjectType, jsObject: object) {
         let result = new BinaryTypeBuilder();
         const typeInfo = BinaryTypeStorage.getByComplexObjectType(complexObjectType);
         if (typeInfo) {
@@ -413,7 +440,11 @@ class BinaryTypeBuilder {
     }
 
     getField(fieldId) {
-        return this._type._fields.get(fieldId);
+        return this._type.getField(fieldId);
+    }
+
+    get schema() {
+        return this._schema;
     }
 
     setField(fieldName, fieldTypeCode = null) {
@@ -477,7 +508,3 @@ class BinaryTypeBuilder {
         }
     }
 }
-
-module.exports = BinaryType;
-module.exports.BinaryField = BinaryField;
-module.exports.BinaryTypeBuilder = BinaryTypeBuilder;

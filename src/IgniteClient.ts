@@ -17,13 +17,16 @@
 
 'use strict';
 
-const CacheClient = require('./CacheClient');
-const IgniteClientConfiguration = require('./IgniteClientConfiguration');
-const CacheConfiguration = require('./CacheConfiguration');
-const BinaryUtils = require('./internal/BinaryUtils');
-const BinaryCommunicator = require('./internal/BinaryCommunicator');
-const ArgumentChecker = require('./internal/ArgumentChecker');
-const Logger = require('./internal/Logger');
+import BinaryCommunicator from "./internal/BinaryCommunicator";
+import ArgumentChecker from "./internal/ArgumentChecker";
+import Logger from "./internal/Logger";
+
+import Router from "./internal/Router";
+import {IgniteClientConfiguration} from "./IgniteClientConfiguration";
+import {CacheConfiguration} from "./CacheConfiguration";
+import { CacheClient } from "./CacheClient";
+import BinaryUtils from "./internal/BinaryUtils";
+import MessageBuffer from "./internal/MessageBuffer";
 
 /**
  * State of Ignite client.
@@ -45,28 +48,33 @@ const Logger = require('./internal/Logger');
  *     If connection with the Ignite node is lost, the client moves to CONNECTING state.
  *     If disconnect() method is called, the client moves to DISCONNECTED state.
  */
-const STATE = Object.freeze({
-    DISCONNECTED : 0,
-    CONNECTING : 1,
-    CONNECTED : 2
-});
+export enum STATE {
+    DISCONNECTED = 0,
+    CONNECTING = 1,
+    CONNECTED = 2
+}
+
+export type IgniteClientOnStateChanged = (state: STATE, reason: string) => void;
 
 /**
  * Class representing Ignite client.
  *
  */
-class IgniteClient {
+export class IgniteClient {
+
+    private _router: Router;
+
+    private _communicator: BinaryCommunicator;
 
     /**
      * Public constructor.
      *
-     * @param {IgniteClient.onStateChanged} [onStateChanged] -
-     * callback called everytime when the client has moved to a new state {@link IgniteClient.STATE}.
+     * @param {IgniteClientOnStateChanged} [onStateChanged] -
+     * callback called everytime when the client has moved to a new state {@link STATE}.
      *
      * @return {IgniteClient} - new IgniteClient instance.
      */
-    constructor(onStateChanged = null) {
-        const Router = require('./internal/Router');
+    constructor(onStateChanged: IgniteClientOnStateChanged = null) {
         this._router = new Router(onStateChanged);
         this._communicator = new BinaryCommunicator(this._router);
     }
@@ -74,13 +82,6 @@ class IgniteClient {
     static get STATE() {
         return STATE;
     }
-
-    /**
-     * onStateChanged callback.
-     * @callback IgniteClient.onStateChanged
-     * @param {IgniteClient.STATE} state - the new state of the client.
-     * @param {string} reason - the reason why the state has been changed.
-     */
 
     /**
      * Connects the client.
@@ -95,7 +96,7 @@ class IgniteClient {
      * @throws {IllegalStateError} if the client is not in DISCONNECTED {@link IgniteClient.STATE}.
      * @throws {IgniteClientError} if other error.
      */
-    async connect(config) {
+    async connect(config: IgniteClientConfiguration): Promise<void> {
         ArgumentChecker.notEmpty(config, 'config');
         ArgumentChecker.hasType(config, 'config', false, IgniteClientConfiguration);
         await this._router.connect(this._communicator, config);
@@ -155,7 +156,7 @@ class IgniteClient {
      * @throws {IllegalStateError} if the client is not in CONNECTED {@link IgniteClient.STATE}.
      * @throws {IgniteClientError} if other error.
      */
-    async getOrCreateCache(name, cacheConfig = null) {
+    async getOrCreateCache(name, cacheConfig = null): Promise<CacheClient> {
         ArgumentChecker.notEmpty(name, 'name');
         ArgumentChecker.hasType(cacheConfig, 'cacheConfig', false, CacheConfiguration);
         await this._communicator.send(
@@ -246,7 +247,7 @@ class IgniteClient {
      * @throws {IllegalStateError} if the client is not in CONNECTED {@link IgniteClient.STATE}.
      * @throws {IgniteClientError} if other error.
      */
-    async cacheNames() {
+    async cacheNames(): Promise<string[]> {
         let names;
         await this._communicator.send(
             BinaryUtils.OPERATION.CACHE_GET_NAMES,
@@ -272,14 +273,14 @@ class IgniteClient {
     /**
      * @ignore
      */
-    _getCache(name, cacheConfig = null) {
+    _getCache(name: string, cacheConfig: CacheConfiguration = null) {
         return new CacheClient(name, cacheConfig, this._communicator);
     }
 
     /**
      * @ignore
      */
-    async _writeCacheNameOrConfig(buffer, name, cacheConfig) {
+    async _writeCacheNameOrConfig(buffer: MessageBuffer, name: string, cacheConfig: CacheConfiguration) {
         if (cacheConfig) {
             await cacheConfig._write(this._communicator, buffer, name);
         }
@@ -288,5 +289,3 @@ class IgniteClient {
         }
     }
 }
-
-module.exports = IgniteClient;

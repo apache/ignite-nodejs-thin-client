@@ -21,9 +21,7 @@ require('jasmine-expect');
 
 const TestingHelper = require('../TestingHelper');
 const PartitionAwarenessTestUtils = require('./PartitionAwarenessTestUtils');
-const IgniteClient = require('apache-ignite-client');
-const ObjectType = IgniteClient.ObjectType;
-const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
+const { IgniteClientConfiguration, ObjectType} = require('apache-ignite-client');
 
 const CACHE_NAME = '__test_cache';
 const SERVER_NUM = 3;
