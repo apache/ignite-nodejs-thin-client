@@ -38,6 +38,7 @@
     "jasmine-expect": "4.0.0",
     "jasmine-reporters": "2.1.1",
     "ps-tree": "latest",
-    "process-exists": "latest"
+    "process-exists": "latest",
+    "glob": "7.1.6"
   }
 }
