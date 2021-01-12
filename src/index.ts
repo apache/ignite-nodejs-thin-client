@@ -17,29 +17,21 @@
 
 'use strict';
 
-/** Utility class for logging errors and debug messages. */
-class Logger {
-    static get debug() {
-        return Logger._debug;
-    }
+export * from "./Timestamp";
+export * from './ObjectType';
+export * from './BinaryObject';
 
-    static set debug(value) {
-        Logger._debug = value;
-    }
+export * from './EnumItem';
+const d = require('decimal.js').default;
+const l = require('long');
+export const Decimal = d;
+export const Long = l;
+export * from './IgniteClientConfiguration';
+export * from './CacheClient';
+export * from './CacheClient';
+export * from './CacheConfiguration';
+export * from './Query';
+export * from './Cursor';
+export * as Errors from  "./Errors";
 
-    static logDebug(data, ...args) {
-        if (Logger._debug) {
-            console.log(data, ...args);
-        }
-    }
-
-    static logError(data, ...args) {
-        if (Logger._debug) {
-            console.log('ERROR: ' + data, ...args);
-        }
-    }
-}
-
-Logger._debug = false;
-
-module.exports = Logger;
+export {IgniteClient} from './IgniteClient';

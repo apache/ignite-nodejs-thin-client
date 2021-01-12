@@ -17,22 +17,29 @@
 
 'use strict';
 
-const Errors = require('../Errors');
-const BinaryUtils = require('./BinaryUtils');
-const Util = require('util');
+import BinaryUtils from "./BinaryUtils";
+import * as Util from "util";
+import { IgniteClientError } from "../Errors";
+import BinaryType, { BinarySchema } from "./BinaryType";
+import BinaryCommunicator from "./BinaryCommunicator";
+import {ComplexObjectType} from "../ObjectType";
 
-class BinaryTypeStorage {
+export default class BinaryTypeStorage {
+
+    private _communicator: BinaryCommunicator;
+    private _types: Map<number, BinaryType>;
+    private static _complexObjectTypes: Map<ComplexObjectType, [BinaryType, BinarySchema]>;
 
     constructor(communicator) {
         this._communicator = communicator;
-        this._types = new Map();
+        this._types = new Map<number, BinaryType>();
     }
 
-    static getByComplexObjectType(complexObjectType) {
+    static getByComplexObjectType(complexObjectType: ComplexObjectType) {
         return BinaryTypeStorage.complexObjectTypes.get(complexObjectType);
     }
 
-    static setByComplexObjectType(complexObjectType, type, schema) {
+    static setByComplexObjectType(complexObjectType: ComplexObjectType, type: BinaryType, schema: BinarySchema) {
         if (!BinaryTypeStorage.complexObjectTypes.has(complexObjectType)) {
             BinaryTypeStorage.complexObjectTypes.set(complexObjectType, [type, schema]);
         }
@@ -40,12 +47,12 @@ class BinaryTypeStorage {
 
     static get complexObjectTypes() {
         if (!BinaryTypeStorage._complexObjectTypes) {
-            BinaryTypeStorage._complexObjectTypes = new Map();
+            BinaryTypeStorage._complexObjectTypes = new Map<ComplexObjectType, [BinaryType, BinarySchema]>();
         }
         return BinaryTypeStorage._complexObjectTypes;
     }
 
-    async addType(binaryType, binarySchema) {
+    async addType(binaryType: BinaryType, binarySchema: BinarySchema) {
         const typeId = binaryType.id;
         const schemaId = binarySchema.id;
         let storageType = this._types.get(typeId);
@@ -62,7 +69,7 @@ class BinaryTypeStorage {
         }
     }
 
-    async getType(typeId, schemaId = null) {
+    async getType(typeId: number, schemaId = null): Promise<BinaryType> {
         let storageType = this._types.get(typeId);
         if (!storageType || schemaId && !storageType.hasSchema(schemaId)) {
             storageType = await this._getBinaryType(typeId);
@@ -75,10 +82,9 @@ class BinaryTypeStorage {
 
     /** Private methods */
 
-    async _getBinaryType(typeId) {
-        const BinaryType = require('./BinaryType');
+    async _getBinaryType(typeId: number) {
         let binaryType = new BinaryType(null);
-        binaryType._id = typeId;
+        binaryType.id = typeId;
         await this._communicator.send(
             BinaryUtils.OPERATION.GET_BINARY_TYPE,
             async (payload) => {
@@ -98,7 +104,7 @@ class BinaryTypeStorage {
 
     async _putBinaryType(binaryType) {
         if (!binaryType.isValid()) {
-            throw Errors.IgniteClientError.serializationError(
+            throw IgniteClientError.serializationError(
                 true, Util.format('type "%d" can not be registered', binaryType.id));
         }
         await this._communicator.send(
@@ -108,5 +114,3 @@ class BinaryTypeStorage {
             });
     }
 }
-
-module.exports = BinaryTypeStorage;

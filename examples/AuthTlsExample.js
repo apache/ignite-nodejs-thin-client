@@ -16,13 +16,7 @@
  */
 
 const FS = require('fs');
-const IgniteClient = require('apache-ignite-client');
-const ObjectType = IgniteClient.ObjectType;
-const ComplexObjectType = IgniteClient.ComplexObjectType;
-const BinaryObject = IgniteClient.BinaryObject;
-const CacheEntry = IgniteClient.CacheEntry;
-const ScanQuery = IgniteClient.ScanQuery;
-const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
+const {IgniteClient, ObjectType, ComplexObjectType, BinaryObject, CacheEntry, ScanQuery, IgniteClientConfiguration} = require('apache-ignite-client');
 
 const ENDPOINT = 'localhost:10800';
 const USER_NAME = 'ignite';

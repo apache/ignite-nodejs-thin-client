@@ -22,7 +22,7 @@ const Util = require('util');
 /**
  * Base Ignite client error class.
  */
-class IgniteClientError extends Error {
+export class IgniteClientError extends Error {
     constructor(message) {
         super(message);
     }
@@ -101,7 +101,7 @@ class IgniteClientError extends Error {
  * Ignite server returns error for the requested operation.
  * @extends IgniteClientError
  */
-class OperationError extends IgniteClientError {
+export class OperationError extends IgniteClientError {
     constructor(message) {
         super(message);
     }
@@ -111,7 +111,7 @@ class OperationError extends IgniteClientError {
  * Ignite client is not in an appropriate state for the requested operation.
  * @extends IgniteClientError
  */
-class IllegalStateError extends IgniteClientError {
+export class IllegalStateError extends IgniteClientError {
     constructor(state, message = null) {
         super(message || 'Ignite client is not in an appropriate state for the requested operation. Current state: ' + state);
     }
@@ -121,13 +121,8 @@ class IllegalStateError extends IgniteClientError {
  * The requested operation is not completed due to the connection lost.
  * @extends IgniteClientError
  */
-class LostConnectionError extends IgniteClientError {
+export class LostConnectionError extends IgniteClientError {
     constructor(message = null) {
         super(message || 'Request is not completed due to the connection lost');
     }
 }
-
-module.exports.IgniteClientError = IgniteClientError;
-module.exports.OperationError = OperationError;
-module.exports.IllegalStateError = IllegalStateError;
-module.exports.LostConnectionError = LostConnectionError;

@@ -17,19 +17,21 @@
 
 'use strict';
 
-const net = require('net');
-const tls = require('tls');
-const URL = require('url');
+import * as tls from 'tls';
+import * as net from 'net';
 const Long = require('long');
-const Util = require('util');
-const Errors = require('../Errors');
-const IgniteClientConfiguration = require('../IgniteClientConfiguration');
-const MessageBuffer = require('./MessageBuffer');
-const BinaryUtils = require('./BinaryUtils');
-const BinaryCommunicator = require('./BinaryCommunicator');
-const PartitionAwarenessUtils = require('./PartitionAwarenessUtils');
-const ArgumentChecker = require('./ArgumentChecker');
-const Logger = require('./Logger');
+import * as Util from 'util';
+import BinaryUtils from "./BinaryUtils";
+
+import Logger from "./Logger";
+import ArgumentChecker from "./ArgumentChecker";
+import BinaryCommunicator from "./BinaryCommunicator";
+import MessageBuffer from "./MessageBuffer";
+import {NetConnectOpts, Socket } from "net";
+import { LostConnectionError, OperationError, IllegalStateError, IgniteClientError } from '../Errors';
+import { AffinityTopologyVersion } from './PartitionAwarenessUtils';
+import { IgniteClientConfiguration } from "../IgniteClientConfiguration";
+import { ConnectionOptions } from 'tls';
 
 const HANDSHAKE_SUCCESS_STATUS_CODE = 1;
 const REQUEST_SUCCESS_STATUS_CODE = 0;
@@ -38,6 +40,12 @@ const FLAG_ERROR = 1;
 const FLAG_TOPOLOGY_CHANGED = 2;
 
 class ProtocolVersion {
+
+    private _major: number;
+
+    private _minor: number;
+
+    private _patch: number;
 
     constructor(major = null, minor = null, patch = null) {
         this._major = major;
@@ -94,16 +102,42 @@ const SUPPORTED_VERSIONS = [
 
 const CURRENT_VERSION = PROTOCOL_VERSION_1_4_0;
 
-const STATE = Object.freeze({
-    INITIAL : 0,
-    HANDSHAKE : 1,
-    CONNECTED : 2,
-    DISCONNECTED : 3
-});
+export enum STATE {
+    INITIAL = 0,
+    HANDSHAKE = 1,
+    CONNECTED = 2,
+    DISCONNECTED = 3
+}
 
-class ClientSocket {
+export default class ClientSocket {
 
-    constructor(endpoint, config, communicator, onSocketDisconnect, onAffinityTopologyChange) {
+    private _socket: Socket;
+
+    private _host: string;
+
+    private _buffer: MessageBuffer;
+
+    private _requests: Map<string, Request>;
+
+    private _nodeUuid: string;
+
+    private _error: string | Error;
+
+    private _endpoint: string;
+    private _config: IgniteClientConfiguration;
+    private _communicator: BinaryCommunicator;
+    private _onSocketDisconnect: Function;
+    private _onAffinityTopologyChange: Function;
+    private _state: STATE;
+    private _requestId: Long;
+    private _offset: number;
+    private _wasConnected: boolean;
+    private _handshakeRequestId: Long;
+    private _protocolVersion: ProtocolVersion;
+    private _port: number | string;
+    private _version: number;
+
+    constructor(endpoint: string, config: IgniteClientConfiguration, communicator: BinaryCommunicator, onSocketDisconnect: Function, onAffinityTopologyChange: Function) {
         ArgumentChecker.notEmpty(endpoint, 'endpoints');
         this._endpoint = endpoint;
         this._parseEndpoint(endpoint);
@@ -113,7 +147,7 @@ class ClientSocket {
         this._onAffinityTopologyChange = onAffinityTopologyChange;
 
         this._state = STATE.INITIAL;
-        this._requests = new Map();
+        this._requests = new Map<string, Request>();
         this._requestId = Long.ZERO;
         this._handshakeRequestId = null;
         this._protocolVersion = null;
@@ -160,7 +194,7 @@ class ClientSocket {
             });
         }
         else {
-            throw new Errors.IllegalStateError(this._state);
+            throw new IllegalStateError(this._state);
         }
     }
 
@@ -171,18 +205,18 @@ class ClientSocket {
             await this._sendRequest(handshakeRequest);
         };
 
-        const options = Object.assign({},
-            this._config._options,
+        const options: (NetConnectOpts | ConnectionOptions) = Object.assign({},
+            this._config.options,
             { host : this._host, port : this._port, version : this._version });
 
-        if (this._config._useTLS) {
-            this._socket = tls.connect(options, onConnected);
+        if (this._config.useTLS) {
+            this._socket = tls.connect(<ConnectionOptions>options, onConnected);
         }
         else {
-            this._socket = net.createConnection(options, onConnected);
+            this._socket = net.createConnection(<NetConnectOpts>options, onConnected);
         }
 
-        this._socket.on('data', async (data) => {
+        this._socket.on('data', async (data: Buffer) => {
             try {
                 await this._processResponse(data);
             }
@@ -201,23 +235,23 @@ class ClientSocket {
         });
     }
 
-    _addRequest(request) {
+    _addRequest(request: Request) {
         this._requests.set(request.id.toString(), request);
     }
 
-    async _sendRequest(request) {
+    async _sendRequest(request: Request) {
         try {
             const message = await request.getMessage();
             this._logMessage(request.id.toString(), true, message);
             this._socket.write(message);
         }
         catch (err) {
-            this._requests.delete(request.id);
+            this._requests.delete(request.id.toString());
             request.reject(err);
         }
     }
 
-    async _processResponse(message) {
+    async _processResponse(message: Buffer) {
         if (this._state === STATE.DISCONNECTED) {
             return;
         }
@@ -259,7 +293,6 @@ class ClientSocket {
                 this._offset = 0;
             }
 
-
             if (this._requests.has(requestId)) {
                 const request = this._requests.get(requestId);
                 this._requests.delete(requestId);
@@ -271,12 +304,12 @@ class ClientSocket {
                 }
             }
             else {
-                throw Errors.IgniteClientError.internalError('Invalid response id: ' + requestId);
+                throw IgniteClientError.internalError('Invalid response id: ' + requestId);
             }
         }
     }
 
-    async _finalizeHandshake(buffer, request) {
+    async _finalizeHandshake(buffer: MessageBuffer, request: Request) {
         const isSuccess = buffer.readByte() === HANDSHAKE_SUCCESS_STATUS_CODE;
 
         if (!isSuccess) {
@@ -288,8 +321,8 @@ class ClientSocket {
 
             if (!this._protocolVersion.equals(serverVersion)) {
                 if (!this._isSupportedVersion(serverVersion) ||
-                    serverVersion.compareTo(PROTOCOL_VERSION_1_1_0) < 0 && this._config._userName) {
-                    request.reject(new Errors.OperationError(
+                    serverVersion.compareTo(PROTOCOL_VERSION_1_1_0) < 0 && this._config.userName) {
+                    request.reject(new OperationError(
                         Util.format('Protocol version mismatch: client %s / server %s. Server details: %s',
                             this._protocolVersion.toString(), serverVersion.toString(), errMessage)));
                     this._disconnect();
@@ -301,7 +334,7 @@ class ClientSocket {
                 }
             }
             else {
-                request.reject(new Errors.OperationError(errMessage));
+                request.reject(new OperationError(errMessage));
                 this._disconnect();
             }
         }
@@ -316,7 +349,7 @@ class ClientSocket {
         }
     }
 
-    async _finalizeResponse(buffer, request) {
+    async _finalizeResponse(buffer: MessageBuffer, request: Request) {
         let statusCode, isSuccess;
 
         if (this._protocolVersion.compareTo(PROTOCOL_VERSION_1_4_0) < 0) {
@@ -330,7 +363,7 @@ class ClientSocket {
             isSuccess = !(flags & FLAG_ERROR);
 
             if (flags & FLAG_TOPOLOGY_CHANGED) {
-                const newVersion = new PartitionAwarenessUtils.AffinityTopologyVersion(buffer);
+                const newVersion = new AffinityTopologyVersion(buffer);
                 await this._onAffinityTopologyChange(newVersion);
             }
 
@@ -342,7 +375,7 @@ class ClientSocket {
         if (!isSuccess) {
             // Error message
             const errMessage = BinaryCommunicator.readString(buffer);
-            request.reject(new Errors.OperationError(errMessage));
+            request.reject(new OperationError(errMessage));
         }
         else {
             try {
@@ -364,13 +397,13 @@ class ClientSocket {
         this._protocolVersion.write(payload);
         // Client code
         payload.writeByte(2);
-        if (this._config._userName) {
-            BinaryCommunicator.writeString(payload, this._config._userName);
-            BinaryCommunicator.writeString(payload, this._config._password);
+        if (this._config.userName) {
+            BinaryCommunicator.writeString(payload, this._config.userName);
+            BinaryCommunicator.writeString(payload, this._config.password);
         }
     }
 
-    _getHandshake(version, resolve, reject) {
+    _getHandshake(version: ProtocolVersion, resolve: Function, reject: Function) {
         this._protocolVersion = version;
         const handshakeRequest = new Request(
             this.requestId, null, this._handshakePayloadWriter.bind(this), null, resolve, reject);
@@ -391,7 +424,7 @@ class ClientSocket {
     _disconnect(close = true, callOnDisconnect = true) {
         this._state = STATE.DISCONNECTED;
         this._requests.forEach((request, id) => {
-            request.reject(new Errors.LostConnectionError(this._error));
+            request.reject(new LostConnectionError(this._error));
             this._requests.delete(id);
         });
         if (this._wasConnected && callOnDisconnect && this._onSocketDisconnect) {
@@ -421,7 +454,7 @@ class ClientSocket {
                     this._host = this._host.substring(1, this._host.length - 1);
                 }
                 else {
-                    throw Errors.IgniteClientError.illegalArgumentError('Incorrect endpoint format: ' + endpoint);
+                    throw IgniteClientError.illegalArgumentError('Incorrect endpoint format: ' + endpoint);
                 }
             }
         }
@@ -438,9 +471,9 @@ class ClientSocket {
             this._port = PORT_DEFAULT;
         }
         else {
-            this._port = parseInt(this._port);
+            this._port = parseInt(<string>this._port);
             if (isNaN(this._port)) {
-                throw Errors.IgniteClientError.illegalArgumentError('Incorrect endpoint format: ' + endpoint);
+                throw IgniteClientError.illegalArgumentError('Incorrect endpoint format: ' + endpoint);
             }
         }
     }
@@ -454,7 +487,13 @@ class ClientSocket {
 }
 
 class Request {
-    constructor(id, opCode, payloadWriter, payloadReader, resolve, reject) {
+    private _id: Long;
+    private _resolve: Function;
+    private _reject: Function;
+    private _payloadWriter: Function;
+    private _opCode: number;
+    private _payloadReader: Function;
+    constructor(id: Long, opCode, payloadWriter, payloadReader, resolve: Function, reject: Function) {
         this._id = id;
         this._opCode = opCode;
         this._payloadWriter = payloadWriter;
@@ -463,7 +502,7 @@ class Request {
         this._reject = reject;
     }
 
-    get id() {
+    get id(): Long {
         return this._id;
     }
 
@@ -500,5 +539,3 @@ class Request {
         return message.data;
     }
 }
-
-module.exports = ClientSocket;

@@ -20,16 +20,7 @@
 require('jasmine-expect');
 
 const TestingHelper = require('../TestingHelper');
-const IgniteClient = require('apache-ignite-client');
-const ObjectType = IgniteClient.ObjectType;
-const MapObjectType = IgniteClient.MapObjectType;
-const CollectionObjectType = IgniteClient.CollectionObjectType;
-const ObjectArrayType = IgniteClient.ObjectArrayType;
-const ComplexObjectType = IgniteClient.ComplexObjectType;
-const EnumItem = IgniteClient.EnumItem;
-const Timestamp = IgniteClient.Timestamp;
-const Decimal = IgniteClient.Decimal;
-const BinaryObject = IgniteClient.BinaryObject;
+const {IgniteClient, ObjectType, MapObjectType, ComplexObjectType, CollectionObjectType, BinaryObject, ObjectArrayType, EnumItem, Timestamp, Decimal} = require('apache-ignite-client');
 
 const CACHE_NAME = '__test_cache';
 

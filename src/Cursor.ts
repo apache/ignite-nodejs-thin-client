@@ -17,32 +17,45 @@
 
 'use strict';
 
-const Errors = require('./Errors');
-const BinaryUtils = require('./internal/BinaryUtils');
-const BinaryObject = require('./BinaryObject');
+const Long = require('long');
+import BinaryUtils, { OPERATION } from './internal/BinaryUtils';
+import BinaryCommunicator from "./internal/BinaryCommunicator";
+import {PRIMITIVE_TYPE} from "./internal/Constants";
+import {CompositeType} from "./ObjectType";
+import MessageBuffer from "./internal/MessageBuffer";
+import {CacheEntry} from "./CacheClient";
 
-/**
- * Class representing a cursor to obtain results of SQL and Scan query operations.
- *
- * The class has no public constructor. An instance of this class is obtained
- * via query() method of {@link CacheClient} objects.
- * One instance of this class returns results of one SQL or Scan query operation.
- *
- * @hideconstructor
- */
-class Cursor {
+export abstract class BaseCursor<T> {
+
+    protected _id: Long;
+
+    protected _hasNext: boolean;
+
+    protected _communicator: BinaryCommunicator;
+
+    protected _operation: OPERATION;
+
+    protected _buffer: MessageBuffer;
+
+    protected _keyType: object;
+
+    protected _valueType: object;
+
+    protected _values: T[];
+
+    protected _valueIndex: number;
 
     /**
-     * Returns one element (cache entry - key-value pair) from the query results.
+     * Returns one element (cache entry) from the query results.
      *
      * Every new call returns the next cache entry from the query results.
      * If the method returns null, no more entries are available.
      *
      * @async
      *
-     * @return {Promise<CacheEntry>} - a cache entry (key-value pair).
+     * @return {Promise<T>} - a cache entry.
      */
-    async getValue() {
+    async getValue(): Promise<T> {
         if (!this._values || this._valueIndex >= this._values.length) {
             await this._getValues();
             this._valueIndex = 0;
@@ -60,25 +73,24 @@ class Cursor {
      *
      * @return {boolean} - true if more cache entries are available, false otherwise.
      */
-    hasMore() {
+    hasMore(): boolean {
         return this._hasNext ||
             this._values && this._valueIndex < this._values.length;
     }
 
     /**
-     * Returns all elements (cache entries - key-value pairs) from the query results.
+     * Returns all elements (cache entries) from the query results.
      *
      * May be used instead of getValue() method if the number of returned entries
      * is relatively small and will not cause memory utilization issues.
      *
      * @async
      *
-     * @return {Promise<Array<CacheEntry>>} - all cache entries (key-value pairs)
-     *   returned by SQL or Scan query.
+     * @return {Promise<Array<T>>} - all cache entries returned by SQL or Scan query.
      */
-    async getAll() {
-        let result = new Array();
-        let values;
+    async getAll(): Promise<T[]> {
+        let result: T[] = [];
+        let values: T[];
         do {
             values = await this._getValues();
             if (values) {
@@ -112,7 +124,7 @@ class Cursor {
     /**
      * @ignore
      */
-    constructor(communicator, operation, buffer, keyType = null, valueType = null) {
+    constructor(communicator: BinaryCommunicator, operation: OPERATION, buffer: MessageBuffer, keyType = null, valueType = null) {
         this._communicator = communicator;
         this._operation = operation;
         this._buffer = buffer;
@@ -144,7 +156,7 @@ class Cursor {
     /**
      * @ignore
      */
-    async _getValues() {
+    async _getValues(): Promise<T[]> {
         if (!this._buffer && this._hasNext) {
             await this._getNext();
         }
@@ -170,12 +182,7 @@ class Cursor {
     /**
      * @ignore
      */
-    async _readRow(buffer) {
-        const CacheEntry = require('./CacheClient').CacheEntry;
-        return new CacheEntry(
-            await this._communicator.readObject(buffer, this._keyType),
-            await this._communicator.readObject(buffer, this._valueType));
-    }
+    abstract _readRow(buffer: MessageBuffer): Promise<T>;
 
     /**
      * @ignore
@@ -191,6 +198,38 @@ class Cursor {
 }
 
 /**
+ * Class representing a cursor to obtain results of SQL and Scan query operations.
+ *
+ * The class has no public constructor. An instance of this class is obtained
+ * via query() method of {@link CacheClient} objects.
+ * One instance of this class returns results of one SQL or Scan query operation.
+ *
+ * @hideconstructor
+ */
+export class Cursor extends BaseCursor<CacheEntry> {
+
+    /** Private methods */
+
+    /**
+     * @ignore
+     */
+    constructor(communicator: BinaryCommunicator, operation: OPERATION, buffer: MessageBuffer, keyType = null, valueType = null) {
+        super(communicator, operation, buffer, keyType, valueType);
+    }
+
+
+    /**
+     * @ignore
+     */
+    async _readRow(buffer: MessageBuffer): Promise<CacheEntry> {
+        return new CacheEntry(
+            await this._communicator.readObject(buffer, this._keyType),
+            await this._communicator.readObject(buffer, this._valueType));
+    }
+
+}
+
+/**
  * Class representing a cursor to obtain results of SQL Fields query operation.
  *
  * The class has no public constructor. An instance of this class is obtained
@@ -200,7 +239,13 @@ class Cursor {
  * @hideconstructor
  * @extends Cursor
  */
-class SqlFieldsCursor extends Cursor {
+export class SqlFieldsCursor extends BaseCursor<Array<object>> {
+
+    private _fieldCount: number;
+
+    private _fieldTypes: (PRIMITIVE_TYPE | CompositeType)[];
+
+    private _fieldNames: string[];
 
     /**
      * Returns one element (array with values of the fields) from the query results.
@@ -213,7 +258,7 @@ class SqlFieldsCursor extends Cursor {
      * @return {Promise<Array<*>>} - array with values of the fields requested by the query.
      *
      */
-    async getValue() {
+    async getValue(): Promise<Array<object>> {
         return await super.getValue();
     }
 
@@ -229,7 +274,7 @@ class SqlFieldsCursor extends Cursor {
      *   Every element of the array is an array with values of the fields requested by the query.
      *
      */
-    async getAll() {
+    async getAll(): Promise<Array<object>[]> {
         return await super.getAll();
     }
 
@@ -241,7 +286,7 @@ class SqlFieldsCursor extends Cursor {
      * @return {Array<string>} - field names.
      *   The order of names corresponds to the order of field values returned in the results of the query.
      */
-    getFieldNames() {
+    getFieldNames(): string[] {
         return this._fieldNames;
     }
 
@@ -252,7 +297,7 @@ class SqlFieldsCursor extends Cursor {
      * will try to make automatic mapping between JavaScript types and Ignite object types -
      * according to the mapping table defined in the description of the {@link ObjectType} class.
      *
-     * @param {...ObjectType.PRIMITIVE_TYPE | CompositeType} fieldTypes - types of the returned fields.
+     * @param {...PRIMITIVE_TYPE | CompositeType} fieldTypes - types of the returned fields.
      *   The order of types must correspond the order of field values returned in the results of the query.
      *   A type of every field can be:
      *   - either a type code of primitive (simple) type
@@ -261,7 +306,7 @@ class SqlFieldsCursor extends Cursor {
      *
      * @return {SqlFieldsCursor} - the same instance of the SqlFieldsCursor.
      */
-    setFieldTypes(...fieldTypes) {
+    setFieldTypes(...fieldTypes: Array<PRIMITIVE_TYPE | CompositeType>) {
         this._fieldTypes = fieldTypes;
         return this;
     }
@@ -271,15 +316,15 @@ class SqlFieldsCursor extends Cursor {
     /**
      * @ignore
      */
-    constructor(communicator, buffer) {
-        super(communicator, BinaryUtils.OPERATION.QUERY_SQL_FIELDS_CURSOR_GET_PAGE, buffer);
+    constructor(communicator: BinaryCommunicator, buffer: MessageBuffer) {
+        super(communicator, OPERATION.QUERY_SQL_FIELDS_CURSOR_GET_PAGE, buffer);
         this._fieldNames = [];
     }
 
     /**
      * @ignore
      */
-    async _readFieldNames(buffer, includeFieldNames) {
+    async _readFieldNames(buffer: MessageBuffer, includeFieldNames: boolean) {
         this._id = buffer.readLong();
         this._fieldCount = buffer.readInteger();
         if (includeFieldNames) {
@@ -292,8 +337,8 @@ class SqlFieldsCursor extends Cursor {
     /**
      * @ignore
      */
-    async _readRow(buffer) {
-        let values = new Array(this._fieldCount);
+    async _readRow(buffer: MessageBuffer): Promise<Array<object>> {
+        let values: object[] = new Array(this._fieldCount);
         let fieldType;
         for (let i = 0; i < this._fieldCount; i++) {
             fieldType = this._fieldTypes && i < this._fieldTypes.length ? this._fieldTypes[i] : null;
@@ -302,6 +347,3 @@ class SqlFieldsCursor extends Cursor {
         return values;
     }
 }
-
-module.exports.Cursor = Cursor;
-module.exports.SqlFieldsCursor = SqlFieldsCursor;

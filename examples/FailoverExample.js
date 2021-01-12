@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-const IgniteClient = require('apache-ignite-client');
-const IgniteClientConfiguration = IgniteClient.IgniteClientConfiguration;
+const {IgniteClient, IgniteClientConfiguration} = require('apache-ignite-client');
 
 const ENDPOINT1 = 'localhost:10800';
 const ENDPOINT2 = 'localhost:10801';
@@ -33,7 +32,7 @@ async function connectClient() {
     try {
         const igniteClientConfiguration = new IgniteClientConfiguration(
             ENDPOINT1, ENDPOINT2, ENDPOINT3);
-        // connect to Ignite a node
+        // connect to an Ignite node
         await igniteClient.connect(igniteClientConfiguration);
     }
     catch (err) {

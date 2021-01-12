@@ -17,10 +17,9 @@
 
 'use strict';
 
-const FS = require('fs');
-const Util = require('util');
-const Errors = require('./Errors');
-const ArgumentChecker = require('./internal/ArgumentChecker');
+import ArgumentChecker from "./internal/ArgumentChecker";
+import {NetConnectOpts} from "net";
+import {ConnectionOptions} from "tls";
 
 /**
  * Class representing Ignite client configuration.
@@ -31,7 +30,19 @@ const ArgumentChecker = require('./internal/ArgumentChecker');
  *   - (optional) TLS enabling
  *   - (optional) connection options
  */
-class IgniteClientConfiguration {
+export class IgniteClientConfiguration {
+
+    private _userName: string;
+
+    private _password: string;
+
+    private _useTLS: boolean;
+
+    private _partitionAwareness: boolean;
+
+    private _endpoints: string[];
+
+    private _options: NetConnectOpts | ConnectionOptions;
 
     /**
      * Creates an instance of Ignite client configuration
@@ -47,7 +58,7 @@ class IgniteClientConfiguration {
      *
      * @throws {IgniteClientError} if error.
      */
-    constructor(...endpoints) {
+    constructor(...endpoints: string[]) {
         ArgumentChecker.notEmpty(endpoints, 'endpoints');
         this._endpoints = endpoints;
         this._userName = null;
@@ -69,7 +80,7 @@ class IgniteClientConfiguration {
      *
      * @throws {IgniteClientError} if error.
      */
-    setUserName(userName) {
+    setUserName(userName: string): IgniteClientConfiguration {
         this._userName = userName;
         return this;
     }
@@ -86,7 +97,7 @@ class IgniteClientConfiguration {
      *
      * @throws {IgniteClientError} if error.
      */
-    setPassword(password) {
+    setPassword(password: string): IgniteClientConfiguration {
         this._password = password;
         return this;
     }
@@ -105,12 +116,35 @@ class IgniteClientConfiguration {
      *
      * @return {IgniteClientConfiguration} - the same instance of the IgniteClientConfiguration.
      */
-    setConnectionOptions(useTLS, connectionOptions = null, partitionAwareness = false) {
+    setConnectionOptions(useTLS: boolean, connectionOptions: NetConnectOpts | ConnectionOptions = null, partitionAwareness: boolean = false) {
         this._useTLS = useTLS;
         this._options = connectionOptions;
         this._partitionAwareness = partitionAwareness;
         return this;
     }
-}
 
-module.exports = IgniteClientConfiguration;
+    get userName(): string {
+        return this._userName;
+    }
+
+    get password(): string {
+        return this._password;
+    }
+
+    get options(): NetConnectOpts | ConnectionOptions {
+        return this._options;
+    }
+
+    get partitionAwareness(): boolean {
+        return this._partitionAwareness;
+    }
+
+    get useTLS(): boolean {
+        return this._useTLS;
+    }
+
+    get endpoints(): string[] {
+        return this._endpoints;
+    }
+
+}

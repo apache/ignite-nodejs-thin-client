@@ -20,8 +20,7 @@
 require('jasmine-expect');
 
 const TestingHelper = require('../TestingHelper');
-const IgniteClient = require('apache-ignite-client');
-const CacheConfiguration = IgniteClient.CacheConfiguration;
+const {IgniteClient, CacheConfiguration} = require('apache-ignite-client');
 
 // Helper class for testing partition awareness feature of apache-ignite-client library.
 class PartitionAwarenessTestUtils {

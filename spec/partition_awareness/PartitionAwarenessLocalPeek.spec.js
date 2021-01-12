@@ -14,19 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 'use strict';
 
 require('jasmine-expect');
 
 const TestingHelper = require('../TestingHelper');
-const IgniteClient = require('apache-ignite-client');
-const Errors = IgniteClient.Errors;
-const CacheConfiguration = IgniteClient.CacheConfiguration;
-const CacheKeyConfiguration = IgniteClient.CacheKeyConfiguration;
-const ObjectType = IgniteClient.ObjectType;
-const BinaryObject = IgniteClient.BinaryObject;
-const ComplexObjectType = IgniteClient.ComplexObjectType;
+const { IgniteClient, CacheConfiguration, CacheKeyConfiguration, ObjectType, BinaryObject, ComplexObjectType } = require('apache-ignite-client');
 
 const CACHE_NAME = '__test_cache';
 
