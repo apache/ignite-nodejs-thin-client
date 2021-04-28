@@ -288,6 +288,14 @@ export default class ClientSocket {
 
             this._logMessage(requestId, false, buffer.getSlice(this._offset - length, length));
 
+            var startindex = this._offset - length;
+            var endindex = this._offset;
+            var resBufferPosition = buffer._position - startindex; // From where the new buffer will start processing response
+
+            const single_response_buffer = MessageBuffer_1.default.from(buffer.getSlice(startindex, endindex), resBufferPosition); // Create new buffer with single response
+            buffer._position = this._offset; // Make position as offset to process new response
+
+
             if (this._offset === buffer.length) {
                 this._buffer = null;
                 this._offset = 0;
@@ -297,10 +305,10 @@ export default class ClientSocket {
                 const request = this._requests.get(requestId);
                 this._requests.delete(requestId);
                 if (isHandshake) {
-                    await this._finalizeHandshake(buffer, request);
+                    await this._finalizeHandshake(single_response_buffer, request);
                 }
                 else {
-                    await this._finalizeResponse(buffer, request);
+                    await this._finalizeResponse(single_response_buffer, request);
                 }
             }
             else {
