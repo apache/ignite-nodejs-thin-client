@@ -288,9 +288,9 @@ export default class ClientSocket {
 
             this._logMessage(requestId, false, buffer.getSlice(this._offset - length, length));
 
-            var startindex = this._offset - length;
-            var endindex = this._offset;
-            var resBufferPosition = buffer._position - startindex; // From where the new buffer will start processing response
+            let startindex = this._offset - length;
+            let endindex = this._offset;
+            let resBufferPosition = buffer._position - startindex; // From where the new buffer will start processing response
 
             const single_response_buffer = MessageBuffer_1.default.from(buffer.getSlice(startindex, endindex), resBufferPosition); // Create new buffer with single response
             buffer._position = this._offset; // Make position as offset to process new response
