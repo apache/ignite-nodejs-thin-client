@@ -1,4 +1,4 @@
-# NodeJS Client for Apache Ignite #
+# Node.js Client for Apache Ignite #
 
 ## Installation ##
 
@@ -8,7 +8,7 @@ Once `node` and `npm` are installed, you can use one of the following installati
 
 ### Installation via npm ###
 
-Execute the following command to install the Node.js Thin Client package:
+This is a recommended way for users. Execute the following command to install the Node.js Thin Client package:
 
 ```
 npm install -g apache-ignite-client
@@ -16,20 +16,44 @@ npm install -g apache-ignite-client
 
 ### Installation from Sources ###
 
-If you want to install the Thin Client library from Ignite sources, please follow the steps:
+This way is more suitable for developers or if you install client from zip archive. If you want to install the Thin Client library from Ignite sources, please follow the steps:
 
-1. Download Ignite sources to `local_ignite_path`
-2. Go to `local_ignite_path/modules/platforms/nodejs` folder
+1. Download and/or unzip Node.js Ignite sources to `nodejs-thin-client`
+2. Go to `nodejs-thin-client` folder
 3. Execute `npm link` command
-4. Execute `npm link apache-ignite-client` command (needed only for examples)
+4. Execute `npm link apache-ignite-client` command
 
 ```bash
-cd local_ignite_path/modules/platforms/nodejs
+cd nodejs-thin-client
 npm link
 npm link apache-ignite-client #linking examples (optional)
 ```
 
-For more information, see [Apache Ignite Node.JS Thin Client documentation](https://apacheignite.readme.io/docs/nodejs-thin-client).
+### Updating from older version
+
+If you installed GridGain client globally, run the following command:
+```bash
+npm update -g @gridgain/thin-client
+```
+
+If you installed GridGain client locally, follow the following instruction:
+1. Navigate to the `nodejs-thin-client`
+2. In project root directory, run the `npm update` command
+3. To test the update, run the `npm outdated` command. There should not be any output
+
+```bash
+cd nodejs-thin-client
+npm update
+npm outdated
+```
+---------------------------------------------------------------------
+
+# Tests #
+
+Node.js Client for Apache Ignite contains [Jasmine](https://www.npmjs.com/package/jasmine) tests to check the behavior of the client. the tests include:
+- functional tests which cover all API methods of the client
+- examples executors which run all examples except AuthTlsExample
+- AuthTlsExample executor
 
 ## Tests Installation ##
 
@@ -68,11 +92,11 @@ Call `npm run test:auth_example` command from `nodejs-thin-client` folder.
 ## Additional Setup for AuthTlsExample ##
 
 1. Obtain certificates required for TLS:
-  - either use pre-generated certificates provided in the [examples/certs](./examples/certs) folder. Password for the files: `123456`. Note, these certificates work for an Ignite server installed locally only.
-  - or obtain other existing certificates applicable for a concrete Ignite server.
-  - or generate new certificates applicable for a concrete Ignite server.
+- either use pre-generated certificates provided in the [examples/certs](./examples/certs) folder. Password for the files: `123456`. Note, these certificates work for an Ignite server installed locally only.
+- or obtain other existing certificates applicable for a concrete Ignite server.
+- or generate new certificates applicable for a concrete Ignite server.
 
-  - The following files are needed:
+- The following files are needed:
     - keystore.jks, truststore.jks - for the server side
     - client.key, client.crt, ca.crt - for the client side
 
@@ -91,9 +115,9 @@ Call `npm run test:auth_example` command from `nodejs-thin-client` folder.
 1. Start three Ignite server nodes.
 
 2. If needed, modify `ENDPOINT1`, `ENDPOINT2`, `ENDPOINT2` constants in an example source file - Ignite node endpoints.
-Default values are `localhost:10800`, `localhost:10801`, `localhost:10802` respectively.
+   Default values are `localhost:10800`, `localhost:10801`, `localhost:10802` respectively.
 
-2. Run an example by calling `node FailoverExample.js`. 
+2. Run an example by calling `node FailoverExample.js`.
 
 3. Shut down the node the client is connected to (you can find it out from the client logs in the console).
 
