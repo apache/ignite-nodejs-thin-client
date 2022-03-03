@@ -37,8 +37,8 @@
         </property>
 
         <property name="gridLogger">
-            <bean class="org.apache.ignite.logger.log4j.Log4JLogger">
-              <constructor-arg type="java.lang.String" value="spec/configs/log4j-3.xml"/>
+            <bean class="org.apache.ignite.logger.log4j2.Log4J2Logger">
+              <constructor-arg type="java.lang.String" value="spec/configs/log4j2-3.xml"/>
             </bean>
         </property>
     </bean>
