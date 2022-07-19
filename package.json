@@ -36,7 +36,7 @@
   "devDependencies": {
     "jasmine": "3.6.2",
     "jasmine-expect": "5.0.0",
-    "jasmine-reporters": "2.3.2",
+    "jasmine-reporters": "2.5.0",
     "ps-tree": "1.2.0",
     "process-exists": "4.0.0",
     "glob": "7.1.6",

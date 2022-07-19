@@ -25,6 +25,8 @@ This way is more suitable for developers or if you install client from zip archi
 
 ```bash
 cd nodejs-thin-client
+npm install
+npm run build
 npm link
 npm link apache-ignite-client #linking examples (optional)
 ```
