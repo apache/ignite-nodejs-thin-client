@@ -59,7 +59,7 @@
                     <property name="cacheMode" value="PARTITIONED"/>
                     <property name="writeSynchronizationMode" value="FULL_SYNC"/>
                     <property name="affinity">
-                        <bean class="org.apache.ignite.internal.processors.affinity.LocalAffinityFunction"/>
+                        <bean class="org.apache.ignite.compatibility.clients.JavaThinCompatibilityTest.CustomAffinity"/>
                     </property>
                 </bean>
 
