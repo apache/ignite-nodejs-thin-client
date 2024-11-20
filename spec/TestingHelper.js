@@ -304,27 +304,6 @@ class TestingHelper {
         }
     }
 
-    static async tryConnectClient(idx = 1, debug = false) {
-        const endPoint = Util.format('127.0.0.1:%d', 10800 + idx);
-
-        TestingHelper.logDebug('Checking endpoint: ' + endPoint);
-
-        let cli = new IgniteClient();
-        cli.setDebug(debug);
-
-        return await cli.connect(new IgniteClientConfiguration(endPoint).
-            setConnectionOptions(false, null, false)).
-            then(() => {
-                TestingHelper.logDebug('Successfully connected');
-                cli.disconnect();
-                return true;
-            }).
-            catch(error => {
-                TestingHelper.logDebug('Error while connecting: ' + error.toString());
-                return false;
-            });
-    }
-
     static async startTestServers(needLogging, serversNum) {
         TestingHelper.logDebug('Starting ' + serversNum + ' node[s]');
         if (serversNum < 0)
@@ -500,6 +479,8 @@ class TestingHelper {
         const nodeCfg = TestingHelper.getConfigPath(needLogging, idx);
         TestingHelper.logDebug('Trying to start node using following command: ' + runner + ' ' + nodeCfg);
 
+        let nodeStarted = false;
+
         const srv = child_process.spawn(runner, [nodeCfg], {env: nodeEnv});
 
         srv.on('error', (error) => {
@@ -510,6 +491,9 @@ class TestingHelper {
         srv.stdout.on('data', (data) => {
             if (config.nodeDebug)
                 console.log(data.toString());
+
+            if (data.toString().includes("Topology snapshot"))
+                nodeStarted = true;
         });
 
         srv.stderr.on('data', (data) => {
@@ -517,12 +501,11 @@ class TestingHelper {
                 console.error(data.toString());
         });
 
-        const started = await TestingHelper.waitForCondition(async () =>
-            TestingHelper.tryConnectClient(idx), 30000);
+        const started = await TestingHelper.waitForCondition(async () => nodeStarted, 30000);
 
         if (!started) {
             await TestingHelper.killNodeAndWait(srv);
-            throw 'Failed to start Node: timeout while trying to connect';
+            throw 'Failed to start Node within timeout';
         }
 
         return srv;
