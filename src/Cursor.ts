@@ -17,7 +17,7 @@
 
 'use strict';
 
-const Long = require('long');
+import Long = require('long');
 import BinaryUtils, { OPERATION } from './internal/BinaryUtils';
 import BinaryCommunicator from "./internal/BinaryCommunicator";
 import {PRIMITIVE_TYPE} from "./internal/Constants";
@@ -74,8 +74,28 @@ export abstract class BaseCursor<T> {
      * @return {boolean} - true if more cache entries are available, false otherwise.
      */
     hasMore(): boolean {
-        return this._hasNext ||
-            this._values && this._valueIndex < this._values.length;
+        if (this._hasNext) {
+            return true;
+        }
+        if (this._values != null && this._valueIndex < this._values.length) {
+            return true;
+        }
+        if (this._buffer != null) {
+            // Peek the buffered first page without consuming it. A page is laid out as
+            // [rowCount:int][rows...][hasNext:bool]; rowCount === 0 with a trailing
+            // hasNext === false is an empty result, so hasMore() must be false here.
+            const savedPosition = this._buffer.position;
+            try {
+                const rowCount = this._buffer.readInteger();
+                return rowCount > 0 || this._buffer.readBoolean();
+            }
+            finally {
+                // Restore even if a read throws on a short/truncated page, so the
+                // peek never advances the buffer position (keeps hasMore() total).
+                this._buffer.position = savedPosition;
+            }
+        }
+        return false;
     }
 
     /**
@@ -160,8 +180,17 @@ export abstract class BaseCursor<T> {
         if (!this._buffer && this._hasNext) {
             await this._getNext();
         }
-        await this._read(this._buffer)
-        this._buffer = null;
+        if (this._buffer) {
+            await this._read(this._buffer);
+            this._buffer = null;
+        } else {
+            // No buffer and no next page — cursor is exhausted. Return an empty
+            // array (not null) to honour the declared Promise<T[]> contract: an
+            // exhausted cursor has no more entries, not a missing collection.
+            // getValue() still returns null naturally (length 0) and hasMore()
+            // stays false, so old entries are never replayed.
+            this._values = [];
+        }
         return this._values;
     }
 

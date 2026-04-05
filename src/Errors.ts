@@ -32,7 +32,7 @@ export class IgniteClientError extends Error {
      * @ignore
      */
     static unsupportedTypeError(type) {
-        const BinaryUtils = require('./internal/BinaryUtils');
+        const BinaryUtils = require('./internal/BinaryUtils').default;
         return new IgniteClientError(Util.format('Type %s is not supported', BinaryUtils.getTypeName(type)));
     }
 
@@ -41,7 +41,7 @@ export class IgniteClientError extends Error {
      * @ignore
      */
     static typeCastError(fromType, toType) {
-        const BinaryUtils = require('./internal/BinaryUtils');
+        const BinaryUtils = require('./internal/BinaryUtils').default;
         return new IgniteClientError(Util.format('Type "%s" can not be cast to %s',
             BinaryUtils.getTypeName(fromType), BinaryUtils.getTypeName(toType)));
     }
@@ -51,7 +51,7 @@ export class IgniteClientError extends Error {
      * @ignore
      */
     static valueCastError(value, toType) {
-        const BinaryUtils = require('./internal/BinaryUtils');
+        const BinaryUtils = require('./internal/BinaryUtils').default;
         return new IgniteClientError(Util.format('Value "%s" can not be cast to %s',
             value, BinaryUtils.getTypeName(toType)));
     }
