@@ -1,6 +1,6 @@
 {
   "name": "apache-ignite-client",
-  "version": "1.1.1",
+  "version": "1.1.0",
   "description": "NodeJS Client for Apache Ignite",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
