@@ -184,10 +184,12 @@ export abstract class BaseCursor<T> {
             await this._read(this._buffer);
             this._buffer = null;
         } else {
-            // No buffer and no next page — cursor is exhausted.
-            // Set _values to null so getValue() returns null and
-            // hasMore() returns false rather than replaying old entries.
-            this._values = null;
+            // No buffer and no next page — cursor is exhausted. Return an empty
+            // array (not null) to honour the declared Promise<T[]> contract: an
+            // exhausted cursor has no more entries, not a missing collection.
+            // getValue() still returns null naturally (length 0) and hasMore()
+            // stays false, so old entries are never replayed.
+            this._values = [];
         }
         return this._values;
     }
