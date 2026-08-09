@@ -46,12 +46,18 @@ function coldValueType() {
         setFieldType('name', ObjectType.PRIMITIVE_TYPE.STRING);
 }
 
-function withTimeout(promise, ms, message) {
+async function withTimeout(promise, ms, message) {
     let timer;
     const guard = new Promise((resolve, reject) => {
         timer = setTimeout(() => reject(new Error(message)), ms);
     });
-    return Promise.race([promise, guard]).finally(() => clearTimeout(timer));
+    // try/finally rather than Promise.prototype.finally, which is Node 10+
+    // (package.json declares engines.node >= 8.0.0).
+    try {
+        return await Promise.race([promise, guard]);
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 describe('cold complex object read test suite >', () => {

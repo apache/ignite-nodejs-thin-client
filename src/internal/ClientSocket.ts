@@ -355,6 +355,14 @@ export default class ClientSocket {
                     // invocations still cannot interleave on _buffer/_offset and the parse
                     // race stays closed.
                     this._finalizeResponse(freshBuffer, request).catch(err => {
+                        // `request` was already removed from _requests above, so the
+                        // _disconnect() below cannot reject it. _finalizeResponse has
+                        // throw paths outside its own try/catch (the header reads and
+                        // _onAffinityTopologyChange), so an error here would otherwise
+                        // leave the caller awaiting this request forever. Reject it
+                        // explicitly first. If _finalizeResponse already settled the
+                        // request, this reject is a harmless no-op.
+                        request.reject(err);
                         this._error = err.message;
                         this._disconnect();
                     });
