@@ -334,6 +334,16 @@ class TestingHelper {
         }
     }
 
+    // Starts the node the examples connect to (127.0.0.1:10800) with the test configuration of the SQL engines.
+    static async startExamplesServer() {
+        if (!TestingHelper._servers)
+            TestingHelper._servers = [];
+
+        const cfgPath = path.join(__dirname, 'configs', 'ignite-config-examples.xml');
+
+        TestingHelper._servers.push(await TestingHelper._startNode(false, 1, cfgPath));
+    }
+
     static async stopTestServers() {
         if (TestingHelper._servers) {
             for (let server of TestingHelper._servers) {
@@ -462,7 +472,7 @@ class TestingHelper {
             fs.unlinkSync(f);
     }
 
-    static async _startNode(needLogging, idx = 1) {
+    static async _startNode(needLogging, idx = 1, cfgPath = null) {
         TestingHelper.clearLogs(idx);
 
         const runner = TestingHelper.getNodeRunner();
@@ -476,7 +486,7 @@ class TestingHelper {
                                    -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=' + (5005 + idx);
         }
 
-        const nodeCfg = TestingHelper.getConfigPath(needLogging, idx);
+        const nodeCfg = cfgPath ? cfgPath : TestingHelper.getConfigPath(needLogging, idx);
         TestingHelper.logDebug('Trying to start node using following command: ' + runner + ' ' + nodeCfg);
 
         let nodeStarted = false;
