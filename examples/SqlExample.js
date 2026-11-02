@@ -72,26 +72,26 @@ class SqlExample {
             Continent CHAR(50),
             Region CHAR(26),
             SurfaceArea DECIMAL(10,2),
-            IndepYear SMALLINT(6),
-            Population INT(11),
+            IndepYear SMALLINT,
+            Population INT,
             LifeExpectancy DECIMAL(3,1),
             GNP DECIMAL(10,2),
             GNPOld DECIMAL(10,2),
             LocalName CHAR(45),
             GovernmentForm CHAR(45),
             HeadOfState CHAR(60),
-            Capital INT(11),
+            Capital INT,
             Code2 CHAR(2)
         ) WITH "template=partitioned, backups=1, CACHE_NAME=${COUNTRY_CACHE_NAME}"`;
 
         const createCityTable = `CREATE TABLE City (
-            ID INT(11),
+            ID INT,
             Name CHAR(35),
             CountryCode CHAR(3),
             District CHAR(20),
-            Population INT(11),
+            Population INT,
             PRIMARY KEY (ID, CountryCode)
-        ) WITH "template=partitioned, backups=1, affinityKey=CountryCode, CACHE_NAME=${CITY_CACHE_NAME}"`;
+        ) WITH "template=partitioned, backups=1, affinity_key=CountryCode, CACHE_NAME=${CITY_CACHE_NAME}"`;
 
         const createCountryLanguageTable = `CREATE TABLE CountryLanguage (
             CountryCode CHAR(3),
@@ -99,7 +99,7 @@ class SqlExample {
             IsOfficial CHAR(2),
             Percentage DECIMAL(4,1),
             PRIMARY KEY (CountryCode, Language)
-        ) WITH "template=partitioned, backups=1, affinityKey=CountryCode, CACHE_NAME=${COUNTRY_LANGUAGE_CACHE_NAME}"`;
+        ) WITH "template=partitioned, backups=1, affinity_key=CountryCode, CACHE_NAME=${COUNTRY_LANGUAGE_CACHE_NAME}"`;
 
         // create tables
         (await cache.query(new SqlFieldsQuery(createCountryTable))).getAll();
